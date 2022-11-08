@@ -1,4 +1,12 @@
+# GAGA ("GAN for Gate") for SPECT and PET simulation
 
-Towards the use of condGAN for PET simulation - aka gagapet
+This repository contains Gate scripts and examples to perform SPECT and PET simulations using sources of activity modeled with Generative Adversarial Network (GAN).  
+
+It uses GATE : https://github.com/OpenGATE/opengate
+And GAGA : https://github.com/dsarrut/gaga-phsp
+
+
+
+
 
 
