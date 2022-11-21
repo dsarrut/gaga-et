@@ -4,7 +4,7 @@
 import opengate as gate
 import gaga_et
 import numpy as np
-
+from pathlib import Path
 
 def max_length(ct_filename):
     info = gate.read_image_info(ct_filename)
@@ -65,6 +65,7 @@ def add_ct_image(sim, param):
         if param.verbose:
             print(f"Density tolerance = {gate.g4_best_unit(tol, 'Volumic Mass')}")
             print(f"Nb of materials in the CT : {len(ct.voxel_materials)} materials")
-        # ct.dump_label_image = param.output_folder / "labels.mhd"
+            print(f"Materials: {ct.voxel_materials}")
+        ct.dump_label_image = Path(param.output_folder) / "labels.mhd"
     param.ct = ct
     return ct

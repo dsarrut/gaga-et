@@ -4,9 +4,10 @@
 from pathlib import Path
 
 
-def add_stat_actor(sim):
+def add_stat_actor(sim, param):
     stats = sim.add_actor('SimulationStatisticsActor', 'stats')
     stats.track_types_flag = True
+    stats.output = Path(param.output_folder) / "stats.txt"
     return stats
 
 
@@ -26,8 +27,8 @@ def add_pet_phsp_actor(sim, param):
         'EventID',
         'EventKineticEnergy',
         'EventPosition',
-        # 'EventDirection',
-        'EventTrackVertexMomentumDirection'  # not really used
+        'EventDirection',  # not really used
+        # 'EventTrackVertexMomentumDirection'
     ]
     phsp.output = str(Path(param.output_folder) / 'pet_ct.root')
 

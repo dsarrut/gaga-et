@@ -24,6 +24,8 @@ setuptools.setup(
         # 'torch'   # better to install torch manually to match cuda version
     ],
     scripts=[
-        "bin/pet_gaga_training_dataset.py"
+        "bin/pet_gaga_training_dataset",
+        "bin/pet_ideal_reconstruction",
+        "bin/image_profile"
     ],
 )

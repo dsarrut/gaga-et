@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import click
+import matplotlib.pyplot as plt
+from gaga_et.helper_profile import *
+import numpy as np
+
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("inputs", nargs=-1)
+@click.option(
+    "--start", "-s", required=True, type=(int, int, int), help="starting voxel"
+)
+@click.option("-n", default=-1, help="Number of voxel on the profile (max if -1)")
+@click.option("--width", "-w", default=0, help="Profile width, in pixel")
+@click.option(
+    "--normalize", default=False, is_flag=True, help="Normalize the data first"
+)
+@click.option("--axis", "-a", default="x", help="axis x, y, z")
+@click.option(
+    "--ene",
+    default=False,
+    is_flag=True,
+    help="Consider images as 2D, with 3rd dim is the energy windows",
+)
+@click.option("--labels", "-l", multiple=True, help="Labels for each plot")
+@click.option(
+    "--scales", type=float, multiple=True, help="Scaling factor for each plot"
+)
+@click.option(
+    "--output", "-o", default=None, help="output filename (.png) or plot at screen"
+)
+def go(inputs, start, n, axis, normalize, labels, width, output, ene, scales):
+    return go_f(inputs, start, n, axis, normalize, labels, width, output, ene, scales)
+
+
+def go_f(inputs, start, n, axis, normalize, labels, width, output, ene, scales):
+    """
+
+    FIXME -> SPLIT in two 1) extract values and 2) plot
+
+    """
+    # check param
+    if len(labels) == 0:
+        labels = [fn for fn in inputs]
+    if len(scales) == 0:
+        scales = [1.0] * len(inputs)
+    if len(labels) != len(inputs):
+        print(f"Error, nb of labels must be same than nb of inputs")
+        exit(-1)
+    if len(scales) != len(scales):
+        print(f"Error, nb of scales must be same than nb of inputs")
+        exit(-1)
+
+    # create list of data to plot
+    profile_y = []
+    spacing = None
+    nb_ene = 1
+    info = None
+    ref_arr = None
+    t_max = 0
+    ref_total = 0
+    i = 0
+    total_sad = {}
+    for fn in inputs:
+        if info is None:
+            img = itk.imread(fn)
+            # this is the first input
+            spacing = img.GetSpacing()
+            info = get_info_from_image(img)
+            ref_arr = itk.array_view_from_image(img)[1:, :]
+            # don't count the first slice (usually whole spectrum)
+            t_max = ref_arr.max()
+            ref_total = ref_arr.sum()
+        else:
+            img = itk.imread(fn)
+            ninfo = get_info_from_image(img)
+            check_image_has_same_info(info, ninfo)
+            carr = itk.array_view_from_image(img)[1:, :]
+            # sad = np.mean(np.fabs(ref_arr[1:, :] - carr[1:, :]) / t_max)
+            sad = np.sum(np.fabs(ref_arr - carr))
+            total_sad[fn] = sad
+            maxdiff = np.max(np.fabs(ref_arr - carr))
+            meandiff = np.mean(np.fabs(ref_arr - carr))
+            total = carr.sum()
+            p = total / ref_total * 100
+            print(
+                f"{fn:50} {labels[i]:50} sad={sad:.1f} \t max={t_max:.1f} maxdiff={maxdiff:.1f}"
+                f"meandiff={meandiff:.4f} "
+                f"\t total {ref_total:.0f} / {total:.0f} \t {p:.2f} %"
+            )
+
+        img = itk.imread(fn)
+        arr = itk.array_view_from_image(img)
+        arr *= scales[len(profile_y)]
+        if ene:
+            y = get_image_profiles_per_slices(
+                arr, start, n, axis=axis, width=width, normalize=normalize
+            )
+            nb_ene = arr.shape[0]
+        else:
+            y = get_image_profile(
+                arr, start, n, axis=axis, width=width, normalize=normalize
+            )
+        profile_y.append(y)
+        i += 1
+
+    # x range and spacing
+    axis_index = get_axis_index(axis)
+    sp = spacing[axis_index]
+    start_point = start[axis_index] * sp
+    n = len(profile_y[0])
+    if nb_ene > 1:
+        n = len(profile_y[0][0])
+    stop_point = start_point + n * sp
+    profile_x = np.arange(start_point, stop_point, sp)
+
+    # create fig canvas
+    nb = len(inputs)
+    fig, ax = plt.subplots(ncols=nb_ene, nrows=1, figsize=(35, 5))
+
+    # plot them
+    if nb_ene != 1:
+        for e in range(nb_ene):
+            a = ax[e]
+            for i in range(nb):
+                x = profile_x
+                y = profile_y[i][e]
+                a.plot(x, y, label=f"{labels[i]}")
+            a.legend(loc="best")
+    else:
+        for i in range(nb):
+            x = profile_x
+            y = profile_y[i]
+            ax.plot(x, y, label=f"{labels[i]}")
+        ax.legend(loc="best")
+
+    plt.tight_layout()
+    if output:
+        plt.subplots_adjust(top=0.85)
+        plt.savefig(output)
+    else:
+        plt.show()
+
+    return total_sad
+
+
+# --------------------------------------------------------------------------
+if __name__ == "__main__":
+    go()

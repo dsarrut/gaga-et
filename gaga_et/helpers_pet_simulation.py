@@ -25,7 +25,7 @@ def make_training_dataset_pet_simulation(sim, param):
     gaga_et.add_positron_vox_activity_source(sim, param)
 
     # add stat actor
-    gaga_et.add_stat_actor(sim)
+    gaga_et.add_stat_actor(sim, param)
 
     # add phsp actor
     gaga_et.add_pet_phsp_actor(sim, param)

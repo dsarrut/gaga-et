@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import click
+import gaga_et
+import itk
+import os
+from box import Box
+import time
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file_inputs', nargs=-1)
+@click.option('--output', '-o', default='AUTO', help='output image (mhd)')
+@click.option('--output_folder', '-f', default='.', help='output folder, auto image name (mhd)')
+@click.option('-n', default='1e5', help='Number of samples')
+@click.option('--cond_phsp', '-c', default=None, help='conditional phsp')
+@click.option('--tlor_radius', '-r', type=float, default=-1,
+              help='Sphere phsp radius in mm, needed for tlor to pairs')
+@click.option('--move_forward', type=float, default=None,
+              help='Distance in mm to displace the points along their direction (to test it)')
+@click.option('--scale', default=1.0, help='Scaling factor of the final image')
+@click.option('--epoch', default=-1, help='Use G at this epoch')
+@click.option('--emin', default=float(0.0001), help='Energy min threshold in MeV')
+@click.option('--emax', default=float(0.600), help='Energy max threshold in MeV')
+@click.option('--img_size', default=128)
+@click.option('--img_spacing', default=4.0)
+@click.option('--coord_system', default=None, help='mhd filename to set the same origin')
+@click.option('--verbose', '-v', is_flag=True, help='verbose')
+def go(file_inputs,
+       output, output_folder, n,
+       tlor_radius, move_forward, scale,
+       epoch, emin, emax, img_size, img_spacing,
+       cond_phsp, coord_system, verbose):
+    # n can be given via 1e5 notation, so we convert to int
+    n = int(float(n))
+
+    initial_output = output
+    # loop on filenames
+    for file_input in file_inputs:
+
+        # output filename
+        full_path = os.path.split(file_input)
+        b, extension = os.path.splitext(full_path[1])
+        if initial_output == 'AUTO':
+            if not output_folder:
+                output_folder = '.'
+            if epoch == -1:
+                output = f'{b}.mhd'
+            else:
+                output = f'{b}_epoch_{int(epoch)}.mhd'
+            output = os.path.join(output_folder, output)
+        print(f'Output filename : {output}')
+
+        # load data (with torch not with numpy)
+        p = Box()
+        p.file_input = file_input
+        p.epoch = -1
+        p.n = n
+        p.to_numpy = False
+        p.cond_phsp = cond_phsp
+        p.verbose = verbose
+        p.batch_size = 1e5 # FIXME should be a parameter
+
+        # read or generate the gammas
+        start = time.time()
+        phsp, keys = gaga_et.read_pair_phsp_or_pth_generate(p)
+        end = time.time()
+        elapsed = end - start
+        pps = int(n / elapsed)
+        if extension == '.pth':
+            print(f'Timing: {end - start:0.1f} s   PPS = {pps:,} (generation)')
+        else:
+            print(f'Timing: {end - start:0.1f} s')
+
+        # reconstruction parameters
+        pr = Box()
+        pr.tlor_radius = tlor_radius
+        pr.move_forward = move_forward
+        pr.emin = emin
+        pr.emax = emax
+        pr.img_size = img_size
+        pr.img_spacing = img_spacing
+        pr.verbose = verbose
+        pr.ignore_weights = True
+
+        # reconstruction
+        start = time.time()
+        img = gaga_et.ideal_pet_reconstruction3(phsp, keys, pr)
+        end = time.time()
+        elapsed = end - start
+        pps = int(n / elapsed)
+        print(f'Timing: {end - start:0.1f} s   PPS = {pps:,} (reconstruction)')
+
+        # normalize/scaling
+        if scale != 1:
+            arr = itk.array_from_image(img)
+            arr *= scale
+            img = itk.image_from_array(arr)
+
+        # modify origin
+        if coord_system:
+            gaga_et.update_coord_system(coord_system, img)
+
+        # write final image
+        itk.imwrite(img, output)
+
+
+# --------------------------------------------------------------------------
+if __name__ == '__main__':
+    go()
