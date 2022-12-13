@@ -13,5 +13,5 @@ def set_default_ui(sim, param):
     if ui.visu:
         print("Visualization is ON, set very low activity, one single thread and no CT")
         ui.number_of_threads = 1
-        param.activity_bq = 100
+        param.activity_bq = 1000
     return ui

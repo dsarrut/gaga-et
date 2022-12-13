@@ -15,6 +15,7 @@ def set_default_physics(sim):
     cuts.world.positron = 1 * m
     cuts.world.electron = 1 * m
     mm = gate.g4_units('mm')
-    cuts.ct.gamma = 1 * mm
-    cuts.ct.positron = 1 * mm
-    cuts.ct.electron = 1 * mm
+    if "ct" in cuts:
+        cuts.ct.gamma = 1 * mm
+        cuts.ct.positron = 1 * mm
+        cuts.ct.electron = 1 * mm

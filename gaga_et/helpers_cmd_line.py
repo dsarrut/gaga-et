@@ -131,6 +131,10 @@ def update_param(param, visu, threads, activity_bq, radionuclide=None):
         param.number_of_threads = int(threads)
     if radionuclide is not None:
         param.radionuclide = radionuclide
+    if "skip_policy" not in param:
+        param.skip_policy = "SkipEvents"
+    if "angular_acceptance" not in param:
+        param.angular_acceptance = False
 
     # remove the comments (starting by '#')
     p2 = []

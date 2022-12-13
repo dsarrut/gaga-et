@@ -8,6 +8,7 @@ from .helpers_simulation_source import *
 from .helpers_simulation_actor import *
 from .helpers_simulation_physic import *
 from .helpers_pet_simulation import *
+from .helpers_spect_simulation import *
 
 # for "ideal" reconstruction
 from .helpers_reconstruction import *
