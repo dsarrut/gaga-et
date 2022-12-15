@@ -176,8 +176,7 @@ def make_spect_simulation(sim, param):
     print(source.direction.acceptance_angle.volumes)
     source.direction.acceptance_angle.intersection_flag = param["angular_acceptance"]
     source.direction.acceptance_angle.skip_policy = param["skip_policy"]
-    if param.gaga_pth != "":
-        source.skip_policy = param["skip_policy"] # needed for GAN source, not used by generic source
+    source.skip_policy = param["skip_policy"]
 
     # add stat actor
     gaga_et.add_stat_actor(sim, param)
@@ -187,10 +186,12 @@ def make_spect_simulation(sim, param):
         gaga_et.add_digitizer(sim, param, add_fake_channel=True)
 
     # rotation
+    print(param.angle)
     if param.angle is not None:
         n = gaga_et.rotate_one_angle(sim, heads, param)
     else:
         n = gaga_et.rotate_gantry(sim, heads, param)
+
 
     # consider n runs
     sec = gate.g4_units("s")

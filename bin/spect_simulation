@@ -59,7 +59,6 @@ def go(json_param,
     # print stats at the end
     stats = sim.get_actor("stats")
     print(stats.user_info.output)
-    #if param["gaga_pth"] != "":
     nse = gate.get_source_skipped_events(sim, 'source')
     nz = gate.get_source_zero_events(sim, 'source')
     print(f"True nb of events : {stats.counts.event_count}")

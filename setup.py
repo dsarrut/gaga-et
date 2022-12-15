@@ -29,6 +29,7 @@ setuptools.setup(
         "bin/image_profile",
         "bin/spect_arf_training_dataset",
         "bin/spect_gaga_training_dataset",
-        "bin/spect_simulation"
+        "bin/spect_simulation",
+        "bin/spect_generate_img"
     ],
 )

@@ -108,6 +108,7 @@ def rotate_one_angle(sim, heads, param):
             "z", angle, angle, n, head.translation, head.rotation
         )
         motion.priority = 5
+        print('motion ', motion.translations, motion.rotations)
     return n
 
 
@@ -120,4 +121,5 @@ def rotate_gantry(sim, heads, param):
             "z", 0, 360 / param.spect_heads, n, head.translation, head.rotation
         )
         motion.priority = 5
+        print('motion ', motion.translations, motion.rotations)
     return n

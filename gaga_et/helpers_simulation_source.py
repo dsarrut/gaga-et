@@ -121,7 +121,6 @@ def add_gaga_source(sim, param):
     gsource.direction_keys = ["PreDirection_X", "PreDirection_Y", "PreDirection_Z"]
     gsource.energy_key = "KineticEnergy"
     gsource.energy_threshold = param.gaga_energy_threshold_keV * keV
-    #gsource.energy_threshold = -1 # FIXME
     gsource.weight_key = None
     gsource.time_key = "TimeFromBeginOfEvent"
     gsource.time_relative = True
