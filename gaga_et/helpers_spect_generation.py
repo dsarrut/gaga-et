@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import gaga_et
 import gaga_phsp as gaga
 import garf
 import numpy as np
 import opengate as gate
-import pathlib
-import opengate.contrib.spect_ge_nm670 as gate_spect
 from box import Box
 import itk
 import time
 
 
+def print_timing(t1, n, s):
+    t = time.time() - t1
+    pps = float(n) / t
+    print(s, f"{t:.3f} sec ; PPS = {pps:.0f}")
+
+
 def spect_generate_images(param):
-    '''
+    """
     input param:
     - gaga_pth
     - garf_pth
     - n (number of samples per angles)
     - batch_size
     - radius
-    '''
+    """
 
     # check param FIXME
     param.n = int(param.n)
@@ -31,7 +34,6 @@ def spect_generate_images(param):
     param_gaga = Box(param)
     print(f'Loading GAN {param.gaga_pth}')
     param_gaga.gan_params, param_gaga.G, param_gaga.D, optim, dtypef = gaga.load(param.gaga_pth)
-    # print(param_gaga)
 
     # load garf pth
     param_garf = Box(param)
@@ -54,12 +56,14 @@ def spect_generate_images(param):
 
     # load or generate angles/planes
     # FIXME several planes
-    param_planes = gaga.init_plane2(param.batch_size, angle=0, radius=param.radius)
+    param_planes = gaga.init_plane2(param.batch_size,
+                                    angle=0,
+                                    radius=param.radius,
+                                    spect_table_shift_mm=param.spect_table_shift_mm)
     param_planes = Box(param_planes)
     param_planes.image_size = param.image_size
     param_planes.image_plane_size_mm = [size * spacing for size, spacing in
-                                        zip(param.image_size, param.image_spacing)]  # FIXME
-    print(param_planes)
+                                        zip(param.image_size, param.image_spacing)]
 
     # generate the projection
     image = spect_generate_one_projection(param_gaga, param_garf, param_planes)
@@ -81,85 +85,67 @@ def spect_generate_one_projection(param_gaga, param_garf, param_plane):
     n = param_gaga.n
     total_n = int(0)
     b = param_gaga.batch_size
-    image = np.zeros(param_plane.image_size, dtype=np.float64)
+    # init image
+    output_img_size = [3, param_plane.image_size[0], param_plane.image_size[1]]
+    image = np.zeros(output_img_size, dtype=np.float64)
+    # init arf
+    param_garf.current_px = None
     # print('image shape', image.shape)
     t1 = time.time()
+    is_last_batch = False
     while total_n < n:
         print(f'Generate batch={b}  --- {total_n}/{n}')
-        p = spect_generate_one_batch(b, param_gaga, param_garf, param_plane)
+        spect_generate_one_batch(b, param_gaga, param_garf, param_plane, image, is_last_batch)
         total_n += b
-        image = image + p
+        # image = image + p
         if total_n + b > param_gaga.n:
             b = param_gaga.n - total_n
+            is_last_batch = True
 
-    # print(f'end one projection {total_n} {image.shape}')
-    t = time.time() - t1
-    pps = float(n) / t
-    print(f"Timing: {t:.3f} sec ; PPS = {pps:.0f}")
+    print()
+    print_timing(t1, n, f"TOTAL Timing")
     return image
 
 
-def spect_generate_one_batch(n, param_gaga, param_garf, param_plane):
+def spect_generate_one_batch(n, param_gaga, param_garf, param_plane, image, is_last_batch=False):
     # sample conditions cond = 6D position ; direction
     cond = param_gaga.cond_generator.generate_condition(n)
-    print(f'Generated conditions: {cond.shape}')
 
     # sample GAN
-    x = spect_gaga_generate_samples(cond, n, param_gaga)
-    kl = param_gaga.gan_params.keys_list
-    print(kl)
+    t1 = time.time()
+    x = gaga.generate_samples3(param_gaga.gan_params, param_gaga.G, n, cond)
+    print_timing(t1, n, f"Timing GAN generation {x.shape}")
 
-    # FIXME move backward
+    # print keys
+    # kl = param_gaga.gan_params.keys_list
+    # print(kl)
+
+    # move backward
     position = x[:, 1:4]  # FIXME indices of the position
     direction = x[:, 4:7]  # FIXME indices of the position
-    back = 700
+    back = param_gaga.gaga_backward_distance_mm
     x[:, 1:4] = position - back * direction
 
     # project on plane
-    px = spect_project_on_plane(x, param_plane)
-    print('px shape', px.shape)
+    px = gaga.project_on_plane2(x, param_plane, param_plane.image_plane_size_mm)
+
+    # is_last_batch = True
+    if param_garf.current_px is None:
+        param_garf.current_px = px
+    else:
+        param_garf.current_px = np.concatenate((param_garf.current_px, px), axis=0)
 
     # apply garf
-    # todo add flog to avoid computing squared image
-    img = spect_apply_garf(px, param_garf)
-    print('img shape', img.shape)
-
-    return img
-
-
-def spect_apply_garf(px, param_garf):
-    img = garf.build_arf_image_with_nn2(
-        param_garf.nn,
-        param_garf.model,
-        px,
-        param_garf,
-        verbose=True,
-        debug=False
-    )
-    return img
-
-
-def spect_project_on_plane(x, param):
-    px = gaga.project_on_plane2(
-        x, param,
-        image_plane_size_mm=param.image_plane_size_mm,
-        debug=False
-    )
-    return px
-
-
-def spect_gaga_generate_samples(cond, n, param):
-    # FIXME timing ?
-    x = gaga.generate_samples2(
-        param.gan_params,
-        param.G,
-        param.D,
-        n=n,  # total n
-        batch_size=n,  # batch size
-        normalize=False,
-        to_numpy=True,  # FIXME unsure
-        cond=cond,  # FIXME todo
-        silence=False
-    )
-
-    return x
+    if len(param_garf.current_px) > n or is_last_batch:
+        t1 = time.time()
+        garf.build_arf_image_with_nn2(
+            param_garf.nn,
+            param_garf.model,
+            param_garf.current_px,
+            param_garf,
+            image,
+            verbose=False
+        )
+        # img = spect_apply_garf(px, param_garf, image)
+        param_garf.current_px = None
+        print_timing(t1, n, f"Timing ARF {px.shape}")
