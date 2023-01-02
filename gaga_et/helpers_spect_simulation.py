@@ -167,13 +167,11 @@ def make_spect_simulation(sim, param):
         source = gaga_et.add_voxelized_source(sim, param.ct, param)
     else:
         source = gaga_et.add_gaga_source(sim, param)
-    print("Source translation", source.position.translation)
 
     # AA Angular acceptance
     source.direction.acceptance_angle.volumes = []
     for i in range(param.spect_heads):
         source.direction.acceptance_angle.volumes.append(f"spect_{i}")
-    print(source.direction.acceptance_angle.volumes)
     source.direction.acceptance_angle.intersection_flag = param["angular_acceptance"]
     source.direction.acceptance_angle.skip_policy = param["skip_policy"]
     source.skip_policy = param["skip_policy"]
@@ -186,7 +184,6 @@ def make_spect_simulation(sim, param):
         gaga_et.add_digitizer(sim, param, add_fake_channel=True)
 
     # rotation
-    print(param.angle)
     if param.angle is not None:
         n = gaga_et.rotate_one_angle(sim, heads, param)
     else:

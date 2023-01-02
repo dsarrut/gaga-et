@@ -7,6 +7,7 @@ from box import Box
 import json
 import click
 from pathlib import Path
+import opengate as gate
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -16,7 +17,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--n', '-n', default=1e4, help='Number of samples to generate')
 @click.option('--output', '-o', help='Output filename.mhd (angle will be added)')
 @click.option('--output_folder', '-f', help='Output folder')
-def go(json_param, n, output, output_folder):
+@click.option('--split', '-s', is_flag=True, help='Split the finale image, one image per energy window')
+def go(json_param, n, output, output_folder, split):
     """
     \b
 
@@ -62,7 +64,15 @@ def go(json_param, n, output, output_folder):
     print(f"Write {f}")
     itk.imwrite(img, f)
 
-    print('done')
+    # split ?
+    if split:
+        n = int(itk.size(img)[2] / param.spect_angles)
+        outputs = gate.split_spect_projections([f], n)
+        e = 0
+        for o in outputs:
+            ff = f.replace(".mhd", f"_{e}.mhd")
+            itk.imwrite(o, ff)
+            e += 1
 
 
 # --------------------------------------------------------------------------
