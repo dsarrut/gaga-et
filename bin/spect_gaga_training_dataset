@@ -30,11 +30,10 @@ def go(json_param, output_folder, visu, activity_bq, threads, radionuclide):
     make_training_dataset_simulation(sim, param)
 
     # run
-    sim.initialize()
-    sim.start()
+    output = sim.start()
 
     # print stats at the end
-    stats = sim.get_actor("stats")
+    stats = output.get_actor("stats")
     print(stats)
     print(stats.user_info.output)
 

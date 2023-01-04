@@ -9,7 +9,7 @@ import platform
 import json
 from box import Box
 import click
-
+import os
 
 class Transcript(object):
     """
@@ -39,7 +39,11 @@ class Transcript(object):
 
     @staticmethod
     def start(filename):
-        """Start transcript, appending print output to given filename"""
+        """
+        Start transcript, appending print output to given filename
+        """
+        if not os.path.exists(filename):
+            os.makedirs(filename)
         sys.stdout = Transcript(filename)
         s = sys.stdout
         print(f"Start:         {s.start_time}")

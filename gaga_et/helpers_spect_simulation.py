@@ -174,7 +174,6 @@ def make_spect_simulation(sim, param):
         source.direction.acceptance_angle.volumes.append(f"spect_{i}")
     source.direction.acceptance_angle.intersection_flag = param["angular_acceptance"]
     source.direction.acceptance_angle.skip_policy = param["skip_policy"]
-    source.skip_policy = param["skip_policy"]
 
     # add stat actor
     gaga_et.add_stat_actor(sim, param)

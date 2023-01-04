@@ -14,6 +14,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--no_garf", is_flag=True, default=False,
               help="Do not consider garf info in the json file")
 @click.option("--gaga_pth", default=None, help="GAN pth filename")
+@click.option("--no_aa", is_flag=True, default=False,
+              help="Do not consider angular acceptance")
+@click.option("--heads", default=None, type=int, help="Number of heads 1-4")
 @common_simu_options
 def go(json_param,
        output_folder,
@@ -24,6 +27,8 @@ def go(json_param,
        activity_bq,
        no_gaga,
        no_garf,
+       no_aa,
+       heads,
        gaga_pth):
     # get the param dic structure
     param = read_json_param(json_param)
@@ -44,6 +49,10 @@ def go(json_param,
         param["gaga_pth"] = gaga_pth
     if no_garf:
         param["garf_pth"] = ""
+    if no_aa:
+        param["angular_acceptance"] = False
+    if heads is not None:
+        param["spect_heads"] = heads
 
     # print param
     print(json.dumps(param, indent=4, sort_keys=False))
@@ -53,14 +62,13 @@ def go(json_param,
     make_spect_simulation(sim, param)
 
     # run
-    sim.initialize()
-    sim.start()
+    output = sim.start()
 
     # print stats at the end
-    stats = sim.get_actor("stats")
+    stats = output.get_actor("stats")
     print(stats.user_info.output)
-    nse = gate.get_source_skipped_events(sim, 'source')
-    nz = gate.get_source_zero_events(sim, 'source')
+    nse = gate.get_source_skipped_events(output, 'source')
+    nz = gate.get_source_zero_events(output, 'source')
     print(f"True nb of events : {stats.counts.event_count}")
     print(f"PPS : {stats.pps}")
     stats.counts.event_count += nse

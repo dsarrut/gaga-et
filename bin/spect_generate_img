@@ -15,18 +15,18 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("json_param", nargs=1)
 @click.option('--n', '-n', default=1e4, help='Number of samples to generate')
+@click.option('--verbose', '-v', default=15, help='Verbose 0-15')
 @click.option('--output', '-o', help='Output filename.mhd (angle will be added)')
 @click.option('--output_folder', '-f', help='Output folder')
 @click.option('--split', '-s', is_flag=True, help='Split the finale image, one image per energy window')
-def go(json_param, n, output, output_folder, split):
+def go(json_param, n, output, output_folder, split, verbose):
     """
     \b
-
-    TODO
 
     Simulation of a SPECT image:
     - input particles are generated from a GAN (gaga-phsp)
     - detector plane use ARF (garf) to create the image
+    - this version does not use Gate/Geant4 -> both neural networks (GAN and GARF) are chained.
 
     """
 
@@ -38,6 +38,7 @@ def go(json_param, n, output, output_folder, split):
             param = json.load(f)
         except IOError:
             print(f"Cannot open input json file {json_param}")
+            exit(0)
     param = Box(param)
 
     # input number of events
@@ -54,14 +55,23 @@ def go(json_param, n, output, output_folder, split):
         param.output_filename = 'projection.mhd'
 
     # options
-    print(json.dumps(param, indent=4, sort_keys=False))
+    if verbose>5:
+        print(json.dumps(param, indent=4, sort_keys=False))
+
+    # verbosity
+    v = gaga_et.SpectProjectionVerbose()
+    v.verbose = verbose
+    param.verb = v
 
     # go
     img = gaga_et.spect_generate_images(param)
 
+    # Output is one single image with the number of slices being the number
+    # of angles times the number of energy windows
+
     # write
     f = str(Path(param.output_folder) / param.output_filename)
-    print(f"Write {f}")
+    v.print(5, f"Write {f}")
     itk.imwrite(img, f)
 
     # split ?

@@ -1,5 +1,6 @@
 # import files
 from .helpers_cmd_line import *
+from .helpers_verbose import *
 
 # to create PET and SPECT simulation
 from .helpers_simulation import *

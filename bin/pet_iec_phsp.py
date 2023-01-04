@@ -274,11 +274,10 @@ def simulation(output_folder, spheres, threads, bg, insert, rad, tung, tungs, un
 
     # initialize & start
     # ui.running_verbose_level = gam.EVENT
-    sim.initialize()
-    sim.start()
+    output = sim.start()
 
     # output stat
-    stats = sim.get_actor('stats')
+    stats = output.get_actor('stats')
     print(stats)
     stats.write(f'{output_folder}/pet_iec_stat.txt')
 
